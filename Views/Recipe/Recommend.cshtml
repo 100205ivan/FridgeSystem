@@ -1,0 +1,72 @@
+@model RecipeRecommendViewModel
+
+@{
+    ViewData["Title"] = "料理推薦";
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-success fw-semibold mb-1">Recipe Recommendation</p>
+        <h1 class="fw-bold mb-1">料理推薦</h1>
+        <p class="text-muted mb-0">依照冰箱現有食材、缺少食材與快過期食材排序推薦。</p>
+    </div>
+    <a asp-controller="Food" asp-action="Index" class="btn btn-outline-secondary">返回食材管理</a>
+</div>
+
+<div class="row g-4">
+    @foreach (var item in Model.Recommendations)
+    {
+        <div class="col-md-6 col-xl-4">
+            <div class="card recipe-card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between gap-3 mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1">@item.Recipe.Name</h4>
+                            <span class="text-muted small">符合 @item.MatchScore / @item.Recipe.Ingredients.Count 項食材</span>
+                        </div>
+                        @if (item.UsesExpiringFood)
+                        {
+                            <span class="badge bg-danger align-self-start">優先使用</span>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-2">符合食材</div>
+                        @if (item.MatchedIngredients.Any())
+                        {
+                            foreach (var ingredient in item.MatchedIngredients)
+                            {
+                                var badgeClass = item.ExpiringIngredients.Contains(ingredient) ? "bg-warning text-dark" : "bg-success";
+                                <span class="badge rounded-pill @badgeClass me-1 mb-1">@ingredient</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted small">目前沒有符合食材</span>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-2">缺少食材</div>
+                        @if (item.MissingIngredients.Any())
+                        {
+                            foreach (var ingredient in item.MissingIngredients)
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border me-1 mb-1">@ingredient</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge rounded-pill bg-primary">食材已備齊</span>
+                        }
+                    </div>
+
+                    <div class="recommend-reason">
+                        <div class="fw-semibold mb-1">推薦原因</div>
+                        <p class="mb-0 text-muted">@item.Reason</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

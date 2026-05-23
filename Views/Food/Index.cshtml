@@ -1,0 +1,138 @@
+@model IEnumerable<FoodItem>
+
+@{
+    ViewData["Title"] = "食材管理";
+    string BadgeClass(string status) => status switch
+    {
+        "正常" => "bg-success",
+        "快過期" => "bg-warning text-dark",
+        "今天到期" => "bg-danger",
+        "已過期" => "bg-danger-subtle text-danger border border-danger-subtle",
+        "放太久" => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-success fw-semibold mb-1">Smart Fridge</p>
+        <h1 class="fw-bold mb-1">食材管理</h1>
+        <p class="text-muted mb-0">查看冰箱內所有食材、保存位置與到期狀態</p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a asp-controller="Recipe" asp-action="Recommend" class="btn btn-outline-success">料理推薦</a>
+        <a asp-action="Create" class="btn btn-success px-4">新增食材</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg">
+        <div class="stat-card">
+            <span>全部食材</span>
+            <strong>@ViewBag.TotalCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="stat-card">
+            <span>冷藏</span>
+            <strong>@ViewBag.FridgeCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="stat-card">
+            <span>冷凍</span>
+            <strong>@ViewBag.FreezerCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="stat-card">
+            <span>快過期</span>
+            <strong class="text-warning">@ViewBag.ExpiringCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="stat-card">
+            <span>已過期</span>
+            <strong class="text-danger">@ViewBag.ExpiredCount</strong>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">食材名稱</label>
+                <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control" placeholder="輸入食材名稱，例如：牛奶、雞蛋">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">保存位置</label>
+                <select name="storagePlace" class="form-select" asp-items="ViewBag.StoragePlaceOptions">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">到期狀態</label>
+                <select name="status" class="form-select" asp-items="ViewBag.StatusOptions">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="col-md-1 d-grid">
+                <button class="btn btn-outline-success">查詢</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h4 class="fw-bold mb-0">食材列表</h4>
+        <span class="text-muted small">共 @Model.Count() 筆</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>食材名稱</th>
+                    <th>分類</th>
+                    <th>數量</th>
+                    <th>保存位置</th>
+                    <th>放入日期</th>
+                    <th>到期日</th>
+                    <th>狀態</th>
+                    <th class="text-center">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">目前沒有符合條件的食材</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@item.Name</td>
+                            <td>@item.Category</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.StoragePlace</td>
+                            <td>@item.PutDate.ToString("yyyy/MM/dd")</td>
+                            <td>@item.ExpireDate?.ToString("yyyy/MM/dd")</td>
+                            <td><span class="badge rounded-pill @BadgeClass(item.Status)">@item.Status</span></td>
+                            <td class="text-center text-nowrap">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">查看</a>
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">編輯</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">刪除</a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

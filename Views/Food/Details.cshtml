@@ -1,0 +1,48 @@
+@model FoodItem
+
+@{
+    ViewData["Title"] = "食材詳細資料";
+    string BadgeClass(string status) => status switch
+    {
+        "正常" => "bg-success",
+        "快過期" => "bg-warning text-dark",
+        "今天到期" => "bg-danger",
+        "已過期" => "bg-danger-subtle text-danger border border-danger-subtle",
+        "放太久" => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}
+
+<div class="form-page mx-auto">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">@Model.Name</h1>
+            <p class="text-muted mb-0">食材詳細資料</p>
+        </div>
+        <span class="badge rounded-pill @BadgeClass(Model.Status) fs-6">@Model.Status</span>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <dl class="row detail-list mb-0">
+                <dt class="col-sm-4">分類</dt>
+                <dd class="col-sm-8">@Model.Category</dd>
+                <dt class="col-sm-4">數量</dt>
+                <dd class="col-sm-8">@Model.Quantity</dd>
+                <dt class="col-sm-4">保存位置</dt>
+                <dd class="col-sm-8">@Model.StoragePlace</dd>
+                <dt class="col-sm-4">放入日期</dt>
+                <dd class="col-sm-8">@Model.PutDate.ToString("yyyy/MM/dd")</dd>
+                <dt class="col-sm-4">有效期限</dt>
+                <dd class="col-sm-8">@Model.ExpireDate?.ToString("yyyy/MM/dd")</dd>
+                <dt class="col-sm-4">備註</dt>
+                <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.Note) ? "無" : Model.Note)</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a asp-action="Index" class="btn btn-outline-secondary">返回列表</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">編輯</a>
+    </div>
+</div>

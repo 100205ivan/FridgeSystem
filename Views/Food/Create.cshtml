@@ -1,0 +1,28 @@
+@model FoodItem
+
+@{
+    ViewData["Title"] = "新增食材";
+}
+
+<div class="form-page mx-auto">
+    <div class="mb-4">
+        <h1 class="fw-bold mb-1">新增食材</h1>
+        <p class="text-muted mb-0">未填保存位置或有效期限時，系統會依分類自動帶入預設值。</p>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form asp-action="Create" method="post" class="row g-3">
+                <partial name="_FoodForm" model="Model" />
+                <div class="col-12 d-flex justify-content-end gap-2 pt-3">
+                    <a asp-action="Index" class="btn btn-outline-secondary">返回列表</a>
+                    <button type="submit" class="btn btn-success px-4">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

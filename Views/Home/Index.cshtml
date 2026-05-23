@@ -1,0 +1,187 @@
+@model DashboardViewModel
+
+@{
+    ViewData["Title"] = "首頁";
+    var topStorage = Model.StorageStats.FirstOrDefault();
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-success fw-semibold mb-1">Smart Fridge Dashboard</p>
+        <h1 class="fw-bold mb-1">智慧冰箱首頁</h1>
+        <p class="text-muted mb-0">快速掌握冰箱食材分布、到期風險與最近操作。</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="Food" asp-action="Calendar" class="btn btn-outline-success">行事曆模式</a>
+        <a asp-controller="Food" asp-action="Create" class="btn btn-success px-4">新增食材</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <span>全部食材</span>
+            <strong>@Model.TotalCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <span>快到期</span>
+            <strong class="text-warning">@Model.ExpiringCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <span>已過期</span>
+            <strong class="text-danger">@Model.ExpiredCount</strong>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <span>最多保存位置</span>
+            <strong>@(topStorage?.Label ?? "-")</strong>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h3 class="fw-bold mb-1">冷藏 vs 冷凍</h3>
+                        <p class="text-muted mb-0">依保存位置統計目前食材。</p>
+                    </div>
+                    <span class="badge bg-success-subtle text-success">@Model.StorageStats.Count 種</span>
+                </div>
+
+                @foreach (var item in Model.StorageStats)
+                {
+                    <div class="chart-row">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold">@item.Label</span>
+                            <span class="text-muted">@item.Count 筆 · @item.Percentage%</span>
+                        </div>
+                        <div class="progress chart-progress" role="progressbar" aria-label="@item.Label">
+                            <div class="progress-bar bg-success" style="width: @item.Percentage%"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-1">食材分類比例</h3>
+                <p class="text-muted mb-3">查看哪些分類占比最高，方便安排採買。</p>
+                <div class="category-grid">
+                    @foreach (var item in Model.CategoryStats)
+                    {
+                        <div class="category-meter">
+                            <div class="d-flex justify-content-between gap-3">
+                                <span class="fw-semibold">@item.Label</span>
+                                <span class="text-muted">@item.Count</span>
+                            </div>
+                            <div class="progress chart-progress" role="progressbar" aria-label="@item.Label">
+                                <div class="progress-bar bg-primary" style="width: @item.Percentage%"></div>
+                            </div>
+                            <small class="text-muted">@item.Percentage%</small>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-3">狀態分布</h3>
+                @foreach (var item in Model.StatusStats)
+                {
+                    var colorClass = item.Label switch
+                    {
+                        "正常" => "text-success",
+                        "快過期" => "text-warning",
+                        "今天到期" => "text-danger",
+                        "已過期" => "text-danger",
+                        _ => "text-secondary"
+                    };
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <span class="fw-semibold @colorClass">@item.Label</span>
+                        <span>@item.Count 筆 <small class="text-muted">(@item.Percentage%)</small></span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-3">到期月份</h3>
+                @foreach (var item in Model.ExpireMonthStats)
+                {
+                    <div class="chart-row">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold">@item.Label</span>
+                            <span class="text-muted">@item.Count 筆</span>
+                        </div>
+                        <div class="progress chart-progress" role="progressbar" aria-label="@item.Label">
+                            <div class="progress-bar bg-info" style="width: @item.Percentage%"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-3">優先處理</h3>
+                @if (!Model.PriorityFoods.Any())
+                {
+                    <p class="text-muted mb-0">目前沒有快過期或已過期食材。</p>
+                }
+                else
+                {
+                    foreach (var food in Model.PriorityFoods)
+                    {
+                        <a asp-controller="Food" asp-action="Details" asp-route-id="@food.Id" class="priority-item">
+                            <span>
+                                <strong>@food.Name</strong>
+                                <small>@food.Quantity · @food.StoragePlace</small>
+                            </span>
+                            <span class="badge bg-warning text-dark">@food.Status</span>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h3 class="fw-bold mb-0">最近使用紀錄</h3>
+        <a asp-controller="Usage" asp-action="Index" class="btn btn-sm btn-outline-secondary">查看全部</a>
+    </div>
+    <div class="list-group list-group-flush">
+        @foreach (var record in Model.RecentRecords)
+        {
+            <div class="list-group-item px-4 py-3">
+                <div class="d-flex justify-content-between gap-3">
+                    <strong>@record.Action</strong>
+                    <span class="text-muted small">@record.Time.ToString("MM/dd HH:mm")</span>
+                </div>
+                <div class="text-muted small">@record.UserName · @record.Target · @record.Description</div>
+            </div>
+        }
+    </div>
+</div>

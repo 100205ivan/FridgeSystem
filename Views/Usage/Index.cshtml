@@ -1,0 +1,41 @@
+@model IEnumerable<UsageRecord>
+
+@{
+    ViewData["Title"] = "使用紀錄";
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-success fw-semibold mb-1">Activity Log</p>
+        <h1 class="fw-bold mb-1">使用紀錄</h1>
+        <p class="text-muted mb-0">追蹤登入、登出與食材新增、修改、刪除紀錄。</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>時間</th>
+                    <th>使用者</th>
+                    <th>動作</th>
+                    <th>對象</th>
+                    <th>說明</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var record in Model)
+                {
+                    <tr>
+                        <td class="text-nowrap">@record.Time.ToString("yyyy/MM/dd HH:mm:ss")</td>
+                        <td>@record.UserName</td>
+                        <td class="fw-semibold">@record.Action</td>
+                        <td>@record.Target</td>
+                        <td class="text-muted">@record.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

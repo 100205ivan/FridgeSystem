@@ -1,0 +1,63 @@
+@model FoodCalendarViewModel
+
+@{
+    ViewData["Title"] = "行事曆模式";
+    var previousMonth = Model.Month.AddMonths(-1);
+    var nextMonth = Model.Month.AddMonths(1);
+    string BadgeClass(string status) => status switch
+    {
+        "正常" => "bg-success",
+        "快過期" => "bg-warning text-dark",
+        "今天到期" => "bg-danger",
+        "已過期" => "bg-danger-subtle text-danger border border-danger-subtle",
+        "放太久" => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-success fw-semibold mb-1">Food Calendar</p>
+        <h1 class="fw-bold mb-1">食材行事曆</h1>
+        <p class="text-muted mb-0">依有效期限排列食材，優先查看今天到期、快過期與已過期項目。</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Calendar" asp-route-year="@previousMonth.Year" asp-route-month="@previousMonth.Month" class="btn btn-outline-secondary">上個月</a>
+        <a asp-action="Calendar" class="btn btn-outline-success">本月</a>
+        <a asp-action="Calendar" asp-route-year="@nextMonth.Year" asp-route-month="@nextMonth.Month" class="btn btn-outline-secondary">下個月</a>
+        <a asp-action="Index" class="btn btn-success">列表模式</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h3 class="fw-bold mb-0">@Model.Month.ToString("yyyy 年 MM 月")</h3>
+        <span class="text-muted small">顯示有效期限</span>
+    </div>
+    <div class="calendar-weekdays">
+        <div>日</div>
+        <div>一</div>
+        <div>二</div>
+        <div>三</div>
+        <div>四</div>
+        <div>五</div>
+        <div>六</div>
+    </div>
+    <div class="calendar-grid">
+        @foreach (var day in Model.Days)
+        {
+            <div class="calendar-day @(day.IsCurrentMonth ? "" : "calendar-day--muted") @(day.IsToday ? "calendar-day--today" : "")">
+                <div class="calendar-day__date">@day.Date.Day</div>
+                <div class="calendar-day__items">
+                    @foreach (var food in day.Foods)
+                    {
+                        <a asp-action="Details" asp-route-id="@food.Id" class="calendar-food">
+                            <span>@food.Name</span>
+                            <small class="badge @BadgeClass(food.Status)">@food.Status</small>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

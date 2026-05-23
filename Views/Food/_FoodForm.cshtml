@@ -1,0 +1,126 @@
+@model FoodItem
+
+@{
+    var amountOptions = new[] { "半" }
+        .Concat(Enumerable.Range(1, 50).Select(number => number.ToString()))
+        .Concat(new[] { "100", "150", "200", "250", "300", "500", "1000" })
+        .ToArray();
+    var unitOptions = new[] { "份", "個", "顆", "瓶", "罐", "包", "盒", "袋", "片", "條", "支", "碗", "杯", "克", "公克", "公斤", "g", "kg", "毫升", "公升", "ml", "L" };
+    var selectedAmount = "1";
+    var selectedUnit = "份";
+    var quantity = Model.Quantity?.Trim();
+
+    if (!string.IsNullOrWhiteSpace(quantity))
+    {
+        var matchedUnit = unitOptions
+            .OrderByDescending(unit => unit.Length)
+            .FirstOrDefault(unit => quantity.EndsWith(unit, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(matchedUnit))
+        {
+            selectedUnit = matchedUnit;
+            selectedAmount = quantity[..^matchedUnit.Length].Trim();
+        }
+        else
+        {
+            var parts = quantity.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            selectedAmount = parts.Length > 0 ? parts[0] : selectedAmount;
+            selectedUnit = parts.Length > 1 ? string.Join(" ", parts.Skip(1)) : selectedUnit;
+        }
+    }
+
+    var allAmountOptions = amountOptions.Contains(selectedAmount)
+        ? amountOptions
+        : amountOptions.Concat(new[] { selectedAmount }).ToArray();
+
+    var allUnitOptions = unitOptions.Contains(selectedUnit)
+        ? unitOptions
+        : unitOptions.Concat(new[] { selectedUnit }).ToArray();
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<input type="hidden" asp-for="Id" />
+
+<div class="col-md-6">
+    <label asp-for="Name" class="form-label fw-semibold"></label>
+    <input asp-for="Name" class="form-control" placeholder="例如：雞蛋、番茄、牛奶" />
+    <span asp-validation-for="Name" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="Category" class="form-label fw-semibold"></label>
+    <select asp-for="Category" class="form-select" asp-items="ViewBag.CategoryOptions">
+        <option value="">請選擇分類</option>
+    </select>
+    <span asp-validation-for="Category" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="Quantity" class="form-label fw-semibold"></label>
+    <input asp-for="Quantity" type="hidden" />
+    <div class="quantity-picker">
+        <select id="QuantityAmount" class="form-select quantity-picker__amount" aria-label="數量">
+            @foreach (var amount in allAmountOptions)
+            {
+                <option value="@amount" selected="@(amount == selectedAmount)">@amount</option>
+            }
+        </select>
+        <select id="QuantityUnit" class="form-select quantity-picker__unit" aria-label="單位">
+            @foreach (var unit in allUnitOptions)
+            {
+                <option value="@unit" selected="@(unit == selectedUnit)">@unit</option>
+            }
+        </select>
+    </div>
+    <span asp-validation-for="Quantity" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="PutDate" class="form-label fw-semibold"></label>
+    <input asp-for="PutDate" type="date" class="form-control" />
+    <span asp-validation-for="PutDate" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="StoragePlace" class="form-label fw-semibold"></label>
+    <select asp-for="StoragePlace" class="form-select" asp-items="ViewBag.StoragePlaceOptions">
+        <option value="">依分類自動判斷</option>
+    </select>
+    <span asp-validation-for="StoragePlace" class="text-danger small"></span>
+</div>
+
+<div class="col-md-6">
+    <label asp-for="ExpireDate" class="form-label fw-semibold"></label>
+    <input asp-for="ExpireDate" type="date" class="form-control" />
+    <span asp-validation-for="ExpireDate" class="text-danger small"></span>
+</div>
+
+<div class="col-12">
+    <label asp-for="Note" class="form-label fw-semibold"></label>
+    <textarea asp-for="Note" class="form-control" rows="4" placeholder="可記錄品牌、購買地點或保存注意事項"></textarea>
+    <span asp-validation-for="Note" class="text-danger small"></span>
+</div>
+
+<script>
+    (() => {
+        const amountSelect = document.getElementById("QuantityAmount");
+        const unitSelect = document.getElementById("QuantityUnit");
+        const quantityInput = document.getElementById("Quantity");
+
+        if (!amountSelect || !unitSelect || !quantityInput) {
+            return;
+        }
+
+        const syncQuantity = () => {
+            const amount = amountSelect.value;
+            const unit = unitSelect.value;
+            quantityInput.value = amount === "半" ? `${amount}${unit}` : `${amount} ${unit}`;
+        };
+
+        amountSelect.addEventListener("change", syncQuantity);
+        unitSelect.addEventListener("change", syncQuantity);
+        quantityInput.form?.addEventListener("submit", syncQuantity);
+        syncQuantity();
+    })();
+</script>
