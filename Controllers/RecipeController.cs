@@ -5,6 +5,7 @@ namespace FridgeSystem.Controllers;
 
 public class RecipeController : Controller
 {
+    // TODO: Mock data for frontend development. Backend should replace this with database access.
     private static readonly List<Recipe> Recipes = new()
     {
         new() { Id = 1, Name = "番茄炒蛋", Ingredients = Ingredients("番茄", "雞蛋") },

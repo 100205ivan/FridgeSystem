@@ -6,6 +6,7 @@ public class FoodRule
     public string DefaultStoragePlace { get; set; } = string.Empty;
     public int DefaultExpireDays { get; set; }
 
+    // TODO: Mock category rules for frontend development. Backend should replace this with database-managed rules.
     public static readonly IReadOnlyList<FoodRule> Rules = new List<FoodRule>
     {
         new() { Category = "肉類", DefaultStoragePlace = "冷凍", DefaultExpireDays = 30 },

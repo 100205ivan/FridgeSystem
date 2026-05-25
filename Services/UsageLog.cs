@@ -4,6 +4,7 @@ namespace FridgeSystem.Services;
 
 public static class UsageLog
 {
+    // TODO: Mock usage records for frontend development. Backend should replace this with persisted usage logs.
     private static readonly List<UsageRecord> Records = new()
     {
         new()

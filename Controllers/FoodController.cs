@@ -7,6 +7,7 @@ namespace FridgeSystem.Controllers;
 
 public class FoodController : Controller
 {
+    // TODO: Mock data for frontend development. Backend should replace this with database access.
     internal static readonly List<FoodItem> Foods = new()
     {
         new() { Id = 1, Name = "牛奶", Category = "乳製品", Quantity = "1 瓶", PutDate = DateTime.Today.AddDays(-4), StoragePlace = "冷藏", ExpireDate = DateTime.Today, Note = "早餐用" },

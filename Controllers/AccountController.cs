@@ -6,6 +6,7 @@ namespace FridgeSystem.Controllers;
 
 public class AccountController : Controller
 {
+    // TODO: Mock users for frontend development. Backend should replace this with real user storage and password hashing.
     private static readonly Dictionary<string, string> Users = new()
     {
         ["admin"] = "1234",
