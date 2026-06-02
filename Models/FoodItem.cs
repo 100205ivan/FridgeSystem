@@ -5,6 +5,9 @@ namespace FridgeSystem.Models;
 public class FoodItem
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
+    public User? User { get; set; }
+    public string? EnglishName { get; set; }
 
     [Required(ErrorMessage = "請輸入食材名稱")]
     [Display(Name = "食材名稱")]

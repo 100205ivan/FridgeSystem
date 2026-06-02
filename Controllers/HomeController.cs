@@ -2,14 +2,24 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using FridgeSystem.Models;
 using FridgeSystem.Services;
+using FridgeSystem.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FridgeSystem.Controllers;
 
 public class HomeController : Controller
 {
+    private readonly AppDbContext _context;
+
+    public HomeController(AppDbContext context)
+    {
+        _context = context;
+    }
+
     public IActionResult Index()
     {
-        var foods = FoodController.Foods;
+        var foods = _context.Foods.ToList();
+
         var model = new DashboardViewModel
         {
             TotalCount = foods.Count,
@@ -36,10 +46,15 @@ public class HomeController : Controller
         return View();
     }
 
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    [ResponseCache(Duration = 0,
+        Location = ResponseCacheLocation.None,
+        NoStore = true)]
     public IActionResult Error()
     {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        return View(new ErrorViewModel
+        {
+            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+        });
     }
 
     private static List<ChartItem> BuildStats(IEnumerable<FoodItem> foods, Func<FoodItem, string> selector)
@@ -53,7 +68,9 @@ public class HomeController : Controller
             {
                 Label = group.Key,
                 Count = group.Count(),
-                Percentage = total == 0 ? 0 : Math.Round(group.Count() * 100m / total, 1)
+                Percentage = total == 0
+                    ? 0
+                    : Math.Round(group.Count() * 100m / total, 1)
             })
             .OrderByDescending(item => item.Count)
             .ThenBy(item => item.Label)
@@ -71,7 +88,9 @@ public class HomeController : Controller
             {
                 Label = group.Key,
                 Count = group.Count(),
-                Percentage = total == 0 ? 0 : Math.Round(group.Count() * 100m / total, 1)
+                Percentage = total == 0
+                    ? 0
+                    : Math.Round(group.Count() * 100m / total, 1)
             })
             .OrderBy(item => item.Label)
             .ToList();

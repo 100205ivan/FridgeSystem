@@ -1,3 +1,7 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using FridgeSystem.Data;
 using FridgeSystem.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,23 +9,97 @@ namespace FridgeSystem.Controllers;
 
 public class RecipeController : Controller
 {
-    // TODO: Mock data for frontend development. Backend should replace this with database access.
-    private static readonly List<Recipe> Recipes = new()
-    {
-        new() { Id = 1, Name = "番茄炒蛋", Ingredients = Ingredients("番茄", "雞蛋") },
-        new() { Id = 2, Name = "蛋炒飯", Ingredients = Ingredients("雞蛋", "白飯") },
-        new() { Id = 3, Name = "雞肉咖哩", Ingredients = Ingredients("雞胸肉", "馬鈴薯", "紅蘿蔔") },
-        new() { Id = 4, Name = "蔬菜湯", Ingredients = Ingredients("高麗菜", "紅蘿蔔", "洋蔥") },
-        new() { Id = 5, Name = "水果優格", Ingredients = Ingredients("水果", "優格") }
-    };
+    private readonly AppDbContext _context;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
 
-    public IActionResult Recommend()
+    public RecipeController(
+        AppDbContext context,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
     {
-        var foods = FoodController.Foods;
-        var recommendations = Recipes
-            .Select(recipe => BuildRecommendation(recipe, foods))
-            .OrderByDescending(recommendation => recommendation.UsesExpiringFood)
-            .ThenByDescending(recommendation => recommendation.MatchScore)
+        _context = context;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
+    }
+
+    public async Task<IActionResult> Recommend()
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        var foods = _context.Foods
+            .Where(food => food.UserId == userId.Value)
+            .ToList();
+
+        if (!foods.Any())
+        {
+            return View(new RecipeRecommendViewModel
+            {
+                InventoryFoods = foods,
+                Recommendations = new List<RecipeRecommendation>()
+            });
+        }
+
+        var apiKey = _configuration["Spoonacular:ApiKey"];
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            ViewBag.ErrorMessage = "Spoonacular API Key is not configured.";
+
+            return View(new RecipeRecommendViewModel
+            {
+                InventoryFoods = foods,
+                Recommendations = new List<RecipeRecommendation>()
+            });
+        }
+
+        var translatedIngredients = new List<string>();
+
+        foreach (var food in foods)
+        {
+            var englishName = await TranslateToEnglish(food.Name);
+            translatedIngredients.Add(englishName);
+        }
+
+        var ingredientText = string.Join(",", translatedIngredients.Distinct());
+
+        var url =
+            "https://api.spoonacular.com/recipes/findByIngredients" +
+            $"?ingredients={Uri.EscapeDataString(ingredientText)}" +
+            "&number=10" +
+            "&ranking=1" +
+            "&ignorePantry=true" +
+            $"&apiKey={apiKey}";
+
+        var client = _httpClientFactory.CreateClient();
+
+        List<SpoonacularRecipe> apiRecipes;
+
+        try
+        {
+            apiRecipes =
+                await client.GetFromJsonAsync<List<SpoonacularRecipe>>(url)
+                ?? new List<SpoonacularRecipe>();
+        }
+        catch
+        {
+            ViewBag.ErrorMessage = "Unable to fetch recipes from Spoonacular.";
+
+            return View(new RecipeRecommendViewModel
+            {
+                InventoryFoods = foods,
+                Recommendations = new List<RecipeRecommendation>()
+            });
+        }
+
+        var recommendations = apiRecipes
+            .Select(ConvertToRecommendation)
+            .OrderByDescending(recommendation => recommendation.MatchScore)
             .ThenBy(recommendation => recommendation.MissingIngredients.Count)
             .ToList();
 
@@ -32,55 +110,85 @@ public class RecipeController : Controller
         });
     }
 
-    private static RecipeRecommendation BuildRecommendation(Recipe recipe, List<FoodItem> foods)
+    private static RecipeRecommendation ConvertToRecommendation(SpoonacularRecipe apiRecipe)
     {
-        var foodNames = foods.Select(food => food.Name).ToList();
-        var expiringFoodNames = foods
-            .Where(food => food.Status is "快過期" or "今天到期" or "已過期")
-            .Select(food => food.Name)
+        var matched = apiRecipe.UsedIngredients
+            .Select(ingredient => ingredient.Name)
             .ToList();
 
-        var requiredIngredients = recipe.Ingredients.Select(ingredient => ingredient.Name).ToList();
-        var matchedIngredients = requiredIngredients
-            .Where(ingredient => HasIngredient(foodNames, ingredient))
-            .ToList();
-        var missingIngredients = requiredIngredients
-            .Where(ingredient => !HasIngredient(foodNames, ingredient))
-            .ToList();
-        var expiringIngredients = matchedIngredients
-            .Where(ingredient => HasIngredient(expiringFoodNames, ingredient))
+        var missing = apiRecipe.MissedIngredients
+            .Select(ingredient => ingredient.Name)
             .ToList();
 
-        var reason = expiringIngredients.Any()
-            ? $"可優先使用即將到期食材：{string.Join("、", expiringIngredients)}"
-            : matchedIngredients.Any()
-                ? $"已具備 {matchedIngredients.Count} 項食材，準備成本較低"
-                : "目前缺少主要食材，可作為採買參考";
+        var allIngredients = matched
+            .Concat(missing)
+            .Select(name => new RecipeIngredient
+            {
+                Name = name
+            })
+            .ToList();
 
         return new RecipeRecommendation
         {
-            Recipe = recipe,
-            MatchedIngredients = matchedIngredients,
-            MissingIngredients = missingIngredients,
-            ExpiringIngredients = expiringIngredients,
-            Reason = reason
+            Recipe = new Recipe
+            {
+                Id = apiRecipe.Id,
+                Name = apiRecipe.Title,
+                Ingredients = allIngredients
+            },
+            MatchedIngredients = matched,
+            MissingIngredients = missing,
+            ExpiringIngredients = new List<string>(),
+            Reason = matched.Any()
+                ? $"Matched {matched.Count} ingredient(s), missing {missing.Count} ingredient(s)."
+                : "No matching ingredient found. You can use this as a shopping reference."
         };
     }
 
-    private static bool HasIngredient(IEnumerable<string> foodNames, string ingredient)
+    private async Task<string> TranslateToEnglish(string text)
     {
-        if (ingredient == "水果")
+        try
         {
-            return FoodController.Foods.Any(food => food.Category == "水果");
-        }
+            var client = _httpClientFactory.CreateClient();
 
-        return foodNames.Any(foodName =>
-            foodName.Contains(ingredient, StringComparison.OrdinalIgnoreCase) ||
-            ingredient.Contains(foodName, StringComparison.OrdinalIgnoreCase));
+            var url =
+                "https://translate.googleapis.com/translate_a/single" +
+                "?client=gtx" +
+                "&sl=zh-TW" +
+                "&tl=en" +
+                "&dt=t" +
+                $"&q={Uri.EscapeDataString(text)}";
+
+            var response = await client.GetStringAsync(url);
+
+            using var json = JsonDocument.Parse(response);
+
+            return json.RootElement[0][0][0].GetString() ?? text;
+        }
+        catch
+        {
+            return text;
+        }
     }
 
-    private static List<RecipeIngredient> Ingredients(params string[] names)
+    private class SpoonacularRecipe
     {
-        return names.Select(name => new RecipeIngredient { Name = name }).ToList();
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = "";
+
+        [JsonPropertyName("usedIngredients")]
+        public List<SpoonacularIngredient> UsedIngredients { get; set; } = new();
+
+        [JsonPropertyName("missedIngredients")]
+        public List<SpoonacularIngredient> MissedIngredients { get; set; } = new();
+    }
+
+    private class SpoonacularIngredient
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
     }
 }

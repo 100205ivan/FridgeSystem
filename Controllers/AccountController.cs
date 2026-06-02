@@ -1,3 +1,4 @@
+using FridgeSystem.Data;
 using FridgeSystem.Models;
 using FridgeSystem.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -6,12 +7,12 @@ namespace FridgeSystem.Controllers;
 
 public class AccountController : Controller
 {
-    // TODO: Mock users for frontend development. Backend should replace this with real user storage and password hashing.
-    private static readonly Dictionary<string, string> Users = new()
+    private readonly AppDbContext _context;
+
+    public AccountController(AppDbContext context)
     {
-        ["admin"] = "1234",
-        ["user"] = "1234"
-    };
+        _context = context;
+    }
 
     public IActionResult Login(string? returnUrl = null)
     {
@@ -30,14 +31,18 @@ public class AccountController : Controller
             return View(model);
         }
 
-        if (!Users.TryGetValue(model.UserName, out var password) || password != model.Password)
+        var user = _context.Users.FirstOrDefault(u => u.Username == model.UserName);
+
+        if (user == null || user.PasswordHash != model.Password)
         {
             ModelState.AddModelError(string.Empty, "帳號或密碼錯誤");
             return View(model);
         }
 
-        HttpContext.Session.SetString("UserName", model.UserName);
-        UsageLog.Add("登入", "帳號", $"{model.UserName} 登入系統", model.UserName);
+        HttpContext.Session.SetInt32("UserId", user.Id);
+        HttpContext.Session.SetString("UserName", user.Username);
+
+        UsageLog.Add("登入", "帳號", $"{user.Username} 登入系統", user.Username);
 
         if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
@@ -47,12 +52,48 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Home");
     }
 
+    public IActionResult Register()
+    {
+        return View(new RegisterViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Register(RegisterViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var exists = _context.Users.Any(u => u.Username == model.UserName);
+
+        if (exists)
+        {
+            ModelState.AddModelError(string.Empty, "此帳號已被註冊");
+            return View(model);
+        }
+
+        var user = new User
+        {
+            Username = model.UserName,
+            PasswordHash = model.Password,
+            CreatedAt = DateTime.Now
+        };
+
+        _context.Users.Add(user);
+        _context.SaveChanges();
+
+        return RedirectToAction("Login");
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult Logout()
     {
         var userName = HttpContext.Session.GetString("UserName") ?? "訪客";
         UsageLog.Add("登出", "帳號", $"{userName} 登出系統", userName);
+
         HttpContext.Session.Clear();
 
         return RedirectToAction("Login");
